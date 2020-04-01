@@ -1,6 +1,5 @@
 import java.net.*;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.io.*;
 
 public class Server {
@@ -13,8 +12,10 @@ public class Server {
     public static class ClientThread extends Thread {
         final Socket client;
         private int clientID;
-        private ObjectOutputStream oos;
+        private Thread writeThread;
         private ObjectInputStream ois;
+        
+        
         /**
          * Constructor that takes socket of client and int of clientID
          * @param client
@@ -26,115 +27,74 @@ public class Server {
         }
 
         public void run() {
+            
             try {
-                oos = new ObjectOutputStream(client.getOutputStream());
+                packet = new Packet(model);
+                Thread writeThread = new Thread(new Writer(this.client, this.clientID, model, packet));
+                writeThread.start();
                 ois = new ObjectInputStream(client.getInputStream());
                 //Sends initial packet that passes Model to client and assigns client ID number.
-                packet = new Packet(-1);
-                initialPacket();
-                oos.writeUnshared(packet);
-                oos.flush();
                 while (true) {
-                    //Reads in packet from client. Displays Client ID and Status code of packet being read.
-                    packet = (Packet) ois.readUnshared();
-                    System.out.println("Reading packet statuscode: " + packet.getStatusCode() + " from client " + this.clientID);
-                    //Checks if two clients are connected and responds with new status code if they are
-                    if (packet.getStatusCode() == 1) {
-                        System.out.println("Checking for two clients!");
-                        if (nClients != 3) {
-                            packet.setStatusCode(-2);
+                    Object object = ois.readObject();
+                    System.out.println("Reading packet");
+                    if (object instanceof Move) {
+                        /**
+                         * Reads in Move object from client and plays move
+                         */
+                        Move move = (Move) ois.readObject();
+                        model.makeMove(move.fR, move.fC, move.tR, move.tC);
+                        /**
+                         * Checks to see if player can jump again
+                         * If Yes doesn't switch players and flags model to let player jump on
+                         * If No switches players and carries on
+                         */
+                        if (move.isJump() && model.getJumpsFrom(model.getActivePlayer(), move.tR, move.tC) != null) {
+                            Move[] jumps = model.getJumpsFrom(model.getActivePlayer(), move.tR, move.tC) ;
+                            for (Move jump: jumps) {
+                                System.out.println(jump);
+                            }
+                            if (jumps != null) {
+                                model.setCanJump(true);
+                            }
                         } else {
-                            System.out.println("Two clients connected, sending status");
-                            packet.setStatusCode(2);
+                            model.setCanJump(false);
+                            model.switchPlayer();
                         }
                     }
-                    if (model.checkGameOver()) {
-                        packet.setStatusCode(11);
-                        packet.setModel(model);
-                        oos.writeUnshared(packet);
+                    /**
+                     * Checks to see if incoming object is the string to start a new game
+                     */
+                    if (object.equals("newGame")) {
+                        model.startGame();
                     }
-                    //After both clients have connected checks packet for status codes of each clients state.
-                    //IF -3 client is asking for game to be started
-                        if (packet.getStatusCode() == -3) {
-                            startGame();
-                        }
-                        //if 4 client is stating ready and waiting for move to be made
-                        if (packet.getStatusCode() == 4) {
-                            System.out.println("Client: " + this.clientID +" ready, waiting for move to be played!");
-                            updateModel();
-                            packet.setStatusCode(6);
-                        }
-                        //if 5 a client has made a move and the model must be unpacked, updated and sent out
-                        if (packet.getStatusCode() == 5) {
-                            moveReceived();
-                        }
-                    //Prints out status code and client before sending packet
-                    //Uses writeUnshared to make sure it is a new serialized object each write
-                    System.out.println("Sending packet statuscode: " + packet.getStatusCode() + " to client " + this.clientID);
-                    oos.writeUnshared(packet);
-                    oos.flush(); 
-                    oos.reset();
-                    Thread.sleep(1000);
+                    /**
+                     * Checks to see if incoming object is the string to resign the game
+                     */
+                    if (object.equals("resigned")) {
+                        model.setResigned(true);
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
-    }
-    //Response methods
-    //This is the initial packet sent when clients connect, passing the model and assign a client ID
-    public void initialPacket() {
-        packet.lock();
-        try {
-            System.out.println("Sending initial packet");
-            packet.setModel(model);
-            packet.setID(this.clientID);
-        } finally {
-            packet.unlock();
-        }
-    }
-
-    public void updateModel() {
-        packet.setModel(model);
-    }
-    public void startGame() {
-        packet.lock();
-        try {
-            System.out.println("Sending start game package!");
-            model.startGame();
-            packet.setModel(model);
-            packet.setStatusCode(3);
-
-        } finally {
-            packet.unlock();
-        }
-
-    }
-    //This method runs if a move is made by a client - the server model is updated from the packet model and set back into the model to be sent out again
-    public void moveReceived() {
-        packet.lock();
-        try {
-            System.out.println("Move by" + this.clientID + ", sending updated model");
-            model = packet.getModel();
-            packet.setModel(model);
-            packet.setStatusCode(6);
-        } finally {
-            packet.unlock();
-        }
     }
 }// End of ClientThread
 //Method to initiate the server which waits for a connection attempt from the client
     public void runServer() throws IOException {
         
         ServerSocket server = new ServerSocket(8765);
+            
             model = new Model();
+            model.startGame();
             listsOfClients = new ArrayList<ClientThread>();
             System.out.println("Server started, waiting for clients");
             while(true) {
                 try {
+                    if (nClients > 2) {
+                        break;
+                    }
                     //Accept clients
                     Socket client = server.accept();
                     System.out.println("Client number " + nClients + " has joined the server!");
@@ -154,8 +114,6 @@ public class Server {
     public boolean clientsFull() {
         return nClients >= 3;
     }
-
-
 
     public static void main(String[] args) {
         try {
