@@ -274,7 +274,7 @@ public class GUI extends JFrame {
 
                     for (Move move : moves) {
                             if (move.fR == row && move.fC == col) {
-                                g.setColor(Color.GREEN);
+                                g.setColor(Color.BLACK);
                                 g.drawRoundRect(0,0, getWidth(), getHeight(), 20,20);
                             }
                     }

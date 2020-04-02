@@ -32,7 +32,7 @@ public class Writer implements Runnable {
                 System.out.println("Sending gamestate packet..");
                 oos.flush();
                 oos.reset();
-                Thread.sleep(150);
+                Thread.sleep(200);
             }      
         } catch (IOException e) {
             e.printStackTrace();
