@@ -16,6 +16,7 @@ public class Server {
         private ObjectInputStream ois;
         
         
+        
         /**
          * Constructor that takes socket of client and int of clientID
          * @param client
@@ -37,30 +38,39 @@ public class Server {
                 while (true) {
                     Object object = ois.readObject();
                     System.out.println("Reading packet");
+                    
                     if (object instanceof Move) {
                         /**
                          * Reads in Move object from client and plays move
                          */
-                        Move move = (Move) ois.readObject();
-                        model.makeMove(move.fR, move.fC, move.tR, move.tC);
-                        /**
-                         * Checks to see if player can jump again
-                         * If Yes doesn't switch players and flags model to let player jump on
-                         * If No switches players and carries on
-                         */
-                        if (move.isJump() && model.getJumpsFrom(model.getActivePlayer(), move.tR, move.tC) != null) {
-                            Move[] jumps = model.getJumpsFrom(model.getActivePlayer(), move.tR, move.tC) ;
-                            for (Move jump: jumps) {
-                                System.out.println(jump);
+                            Move move = (Move) ois.readObject();
+                            model.lock();
+                            try {
+                                model.makeMove(move.fR, move.fC, move.tR, move.tC);
+                                /**
+                                 * Checks to see if player can jump again
+                                 * If Yes doesn't switch players and flags model to let player jump on
+                                 * If No switches players and carries on to new round
+                                 */
+                                if (move.isJump() && model.getJumpsFrom(model.getActivePlayer(), move.tR, move.tC) != null) {
+                                    Move[] jumps = model.getJumpsFrom(model.getActivePlayer(), move.tR, move.tC) ;
+                                    for (Move jump: jumps) {
+                                        System.out.println(jump);
+                                    }
+                                    if (jumps != null) {
+                                        model.setCanJump(true);
+                                    }
+                                } else {
+                                    model.setCanJump(false);
+                                    model.switchPlayer();
+                                }
+                            } finally {
+                                model.unlock();
                             }
-                            if (jumps != null) {
-                                model.setCanJump(true);
-                            }
-                        } else {
-                            model.setCanJump(false);
-                            model.switchPlayer();
+
                         }
-                    }
+
+
                     /**
                      * Checks to see if incoming object is the string to start a new game
                      */
@@ -78,6 +88,12 @@ public class Server {
                 e.printStackTrace();
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
+            } finally {
+                try {
+                    client.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
     }
 }// End of ClientThread
@@ -108,19 +124,20 @@ public class Server {
                     nClients++;
             } catch (IOException e) {
                 e.printStackTrace();
-            }
+            } 
         } 
+        try {
+            server.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
-    public boolean clientsFull() {
-        return nClients >= 3;
-    }
-
     public static void main(String[] args) {
         try {
             new Server().runServer();
         } catch (IOException e) {
             e.printStackTrace();
-        }
+        } 
         
 
     }

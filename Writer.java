@@ -10,7 +10,10 @@ public class Writer implements Runnable {
     private Model model;
     private int clientID;
     public Packet packet;
-
+    /**
+     * Constructor for Writer that takes the static packet and model variables from the server
+     * Also takes the socket for the client and assigned clientID
+     */
     public Writer(Socket s, int clientID, Model model, Packet packet) {
         this.socket = s;
         this.packet = packet;
@@ -24,17 +27,17 @@ public class Writer implements Runnable {
                 /**
                  * Sends packet containing Client ID and Model every 150ms
                  */
-                    packet.setID(this.clientID);
-                    oos.writeObject(packet);
-                    System.out.println("Sending gamestate packet..");
-                    oos.flush();
-                    oos.reset();
-                    Thread.sleep(150);
+                packet.setID(this.clientID);
+                oos.writeObject(packet);
+                System.out.println("Sending gamestate packet..");
+                oos.flush();
+                oos.reset();
+                Thread.sleep(150);
             }      
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
             e.printStackTrace();
-        }   
+        }
     }
 }

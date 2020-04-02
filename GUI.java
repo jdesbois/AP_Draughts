@@ -35,17 +35,18 @@ public class GUI extends JFrame {
     private int activePlayer;
     private JPanel separator;
     private ObjectOutputStream oos;
-    private ObjectInputStream ois;
     private boolean resigned = false;
 
     // Key for identifying pieces.
     static final int EMPTY = 0, RED = 1, RED_KING = 3, BLACK = 2, BLACK_KING = 4;
-
-    public GUI(Model model, int playerID, ObjectOutputStream oos, ObjectInputStream ois) {
+    /**
+     * Constructor that takes Model, playerID, ObjectOutputStream
+     *  Runs InitiUI which will initialise components and set them visible to user
+     */
+    public GUI(Model model, int playerID, ObjectOutputStream oos) {
         this.model = model;
         this.playerID = playerID;
         this.oos = oos;
-        this.ois = ois;
         initUI();
     }
     public int getFromRow(){
@@ -60,12 +61,17 @@ public class GUI extends JFrame {
     public int getToCol(){
         return toCol;
     }
+    /**
+     * Method to initialise components of the UI
+     * Adds action listeners to both buttons
+     */
     public void initUI() {
         container = new JPanel();
         board = createBoard();
         hud = new JPanel();
         separator = new JPanel();
         newGame = new JButton("New Game!");
+        //Listener for newGame button that sends communication to server to restart the model.
         newGame.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent a) {
                 newGame.setEnabled(false);
@@ -78,6 +84,7 @@ public class GUI extends JFrame {
             }
         });
         resignGame = new JButton("Resign");
+        //Listener on resign button that ends game for both players. 
         resignGame.addActionListener(new ActionListener(){
             public void actionPerformed(ActionEvent e) {
                 try {
@@ -100,7 +107,6 @@ public class GUI extends JFrame {
 
         playerStatus.setText("You are player number " + playerID);
 
-
         hud.add(playerStatus);
         hud.add(separator);
         hud.add(status);
@@ -118,6 +124,12 @@ public class GUI extends JFrame {
         boardState = model.getBoard();
         repaint();
     }
+    /**
+     * Method to check whether the player can jump again
+     * Checks and updates text for players turn
+     * Checks for a game ending condition
+     * Makes sure newGame button is disabled while game is in progress
+     */
     public void updateBoard() {
         this.boardState = model.getBoard();
         if (model.isCanJump()) {
@@ -136,7 +148,9 @@ public class GUI extends JFrame {
         }
         repaint();
     }
-
+    /**
+     * Method that is triggered is a game win/draw condition is met or a player hits the resign button
+     */
     public void endGame() {
         model.endGame();
         newGame.setEnabled(true);
@@ -152,7 +166,10 @@ public class GUI extends JFrame {
         repaint();
     }
 
-
+    /**
+     * Method to update the model sent to the client from the server
+     * @param model
+     */
     public void updateModel(Model model) {
         this.model = model;
         this.boardState = model.getBoard();
@@ -186,7 +203,12 @@ public class GUI extends JFrame {
 
     public static void main(String[] args) {
     }
-
+    /**
+     * Custom JPanel class
+     * This class has coordinates set for row and col when it is added to the game board
+     * It implements mouse listener to facilitate the ability to select a counter or board space.
+     * It uses Graphics to create the board and counters drawing from the model game state board to place them.
+     */
     public class BoardSpace extends JPanel implements MouseListener {
         /**
          *
@@ -240,6 +262,11 @@ public class GUI extends JFrame {
                 g.setColor(Color.yellow);
                 g.drawString("K", getHeight() / 2, getWidth() / 2);
             }
+            /**
+             * IF the game is in progress and the moves array is not empty
+             *  The counters that can be moved will be highlighted 
+             *  Once a counter is selected the legal moves for that counter will be highlighted. 
+             */
             if (moves == null ) {
                 return;
             } else {
@@ -278,8 +305,16 @@ public class GUI extends JFrame {
                 System.out.println("Piece: " + piece + " row:" + row + " col:" + col);
                 Move[] moves = model.checkLegalMoves(model.getActivePlayer());
 
-                // checks the current boardstate to see if the selected space has a counter on
-                // it
+                /**
+                 * Logic for a player to select a move
+                 * Checks current board state to see if the selected coords contain a piece or empty space.
+                 * If it has a piece the fromRow fromCol variables are set
+                 * If a square on the board is selected then the toRow and toCol variables are set
+                 * These variabels are then validated against the list of legal moves created by the model 
+                 * If they are valid the Move object is sent to the server for processing
+                 * 
+                 * This logic is wrapped in logic to check for an active player, if the active player isn't the current ID of the UI then a move cannot be made.
+                 */
                 if (piece == model.getActivePlayer() || piece == BLACK_KING || piece == RED_KING) {
                     for (Move move : moves) {
                         System.out.println(move);

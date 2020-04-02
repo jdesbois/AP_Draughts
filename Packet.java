@@ -4,7 +4,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Packet implements Serializable {
     /**
-     *
+     * This class facilitates communication between server/client
+     * It holds the model and status codes required to make updates
      */
     private static final long serialVersionUID = 1L;
 

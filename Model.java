@@ -9,7 +9,7 @@ public class Model implements Serializable {
      */
     private static final long serialVersionUID = -819388264372277152L;
     /**
-     *
+     *final variables representing the pieces on the game board
      */
     static final int EMPTY = 0, RED = 1, RED_KING = 3, BLACK = 2, BLACK_KING = 4;
 
@@ -17,7 +17,6 @@ public class Model implements Serializable {
     private Lock lock = new ReentrantLock();
     private int activePlayer;
     private boolean gameInProgress;
-    private boolean moveMade;
     private Move[] moves;
     private int winner;
     private boolean resigned;
@@ -50,7 +49,9 @@ public class Model implements Serializable {
     public void setWinner(int winner) {
         this.winner = winner;
     }
-
+    /**
+     * Begins the game by creating the initial board, setting active player and checking for legal moves. 
+     */
     public void startGame() {
         initialBoard();
         resigned = false;
@@ -58,12 +59,17 @@ public class Model implements Serializable {
         activePlayer = BLACK;
         moves = checkLegalMoves(getActivePlayer());
     }
-
+    /**
+     * Ends the game by flagging the inprogress boolean and setting active player back to black
+     */
     public void endGame() {
         gameInProgress = false;
         activePlayer = BLACK;
     }
-
+    /**
+     * Checks for a win or draw using the checkWin checkDraw methods and returns a boolean result
+     * @return
+     */
     public boolean checkGameOver() {
         if (checkWin()) {
             return true;
@@ -73,7 +79,10 @@ public class Model implements Serializable {
         }
         return false;
     }
-
+    /**
+     * Checks both players to see if they have any valid moves, if both are unable to move the game is a draw
+     * @return
+     */
     public boolean checkDraw() {
         Move[] redMoves = checkLegalMoves(RED);
         Move[] blackMoves = checkLegalMoves(BLACK);
@@ -82,7 +91,10 @@ public class Model implements Serializable {
         }
         return false;
     }
-
+    /**
+     * Iterates over the board and counts pieces of each colour, if either return 0 then the other player is the winner
+     * @return
+     */
     public boolean checkWin() {
         int blackCounters = 0;
         int redCounters = 0;
@@ -111,6 +123,10 @@ public class Model implements Serializable {
     public Move[] getMoves() {
         return moves;
     }
+    /**
+     * Method to setup the initial nested int array
+     * Uses the variables declared above for player pieces 
+     */
     public void initialBoard() {
         for (int row=0; row < 8; row++) {
             for (int col=0; col < 8; col++) {
@@ -131,7 +147,16 @@ public class Model implements Serializable {
     public int[][] getBoard() {
         return board;
     }
-
+    /**
+     * Method that takes the parameters for a jump, checks the legal moves array to verify it is a legal move
+     * Checks to see if the move is a jump and removes the jumped piece if it is
+     * Removes the counter from its current position and places it in its new position on the board 
+     * @param fr
+     * @param fc
+     * @param tr
+     * @param tc
+     * @return
+     */
     public boolean makeMove(int fr, int fc, int tr, int tc) {
         moves = checkLegalMoves(getActivePlayer());
         if (moves == null) {
@@ -165,7 +190,7 @@ public class Model implements Serializable {
         System.out.println("Not valid!");
         return false;
     }
-    //Checks all pieces for all legal moves on the board. 
+    //Iterates through the current board looking for moves avaialble to the currently active player.
     public Move[] checkLegalMoves(int player) {
         ArrayList<Move> moves = new ArrayList<Move>();
         int playerKing;
@@ -215,6 +240,7 @@ public class Model implements Serializable {
             return legalMoves;
         }
     }
+    //Method to check for jumps from a specific spave on the board. Used primarily when a previous jump has been made.
     Move[] getJumpsFrom(int player, int row, int col) {
         if (player != RED && player != BLACK)
             return null;
@@ -278,6 +304,7 @@ public class Model implements Serializable {
             return true; 
         }
     }
+    //Method to check if the player is able to make am ove with the selected counter
     public boolean canMove(int player, int fR, int fC, int tR, int tC) {
         //if the to position is not on the board
         if (tR < 0 || tR >=8 || tC < 0 || tC >=8) {
@@ -298,45 +325,14 @@ public class Model implements Serializable {
             return true; 
         }
     }
-    public boolean canPlayerJump() {
-        Move[] moves = checkLegalMoves(activePlayer);
-            for (Move move : moves) {
-                if (move.isJump()) {
-                    return true;
-                }
-            }
-            return false;
-        }
+
     public int getActivePlayer() {
         return activePlayer;
     }
     public void setActivePlayer(int player) {
         activePlayer = player;
     }
-    public Move[] checkFollowUpJump(int player, int toRow, int toCol) {
-        ArrayList<Move> moves = new ArrayList<Move>();
-        
-        if (board[toRow][toCol] == getActivePlayer() || board[toRow][toCol] == getActivePlayer() + 1) {
-            if (checkJump(getActivePlayer(), toRow, toCol, toRow+1, toCol+1, toRow+2, toCol+2))
-                moves.add(new Move(toRow, toCol, toRow+2, toCol+2));
-            if (checkJump(getActivePlayer(), toRow, toCol, toRow-1, toCol+1, toRow-2, toCol+2))
-                moves.add(new Move(toRow, toCol, toRow-2, toCol+2));
-            if (checkJump(getActivePlayer(), toRow, toCol, toRow+1, toCol-1, toRow+2, toCol-2))
-                moves.add(new Move(toRow, toCol, toRow+2, toCol-2));
-            if (checkJump(getActivePlayer(), toRow, toCol, toRow-1, toCol-1, toRow-2, toCol-2))
-                moves.add(new Move(toRow, toCol, toRow-2, toCol-2));
-        }
-        if (moves.size() == 0) {
-            return null;
-        } else {
-            Move[] movesArray = new Move[moves.size()];
-            for (int i=0; i < moves.size(); i++) {
-                System.out.println(movesArray[i]);
-                movesArray[i] = moves.get(i);
-            }
-            return movesArray;
-        }
-    }
+    //Method to switch player and populate the moves array with the new set of legal moves for the active player
      public void switchPlayer() {
         //switch player
         if (activePlayer == RED) {
@@ -355,6 +351,7 @@ public class Model implements Serializable {
     public void unlock() {
         lock.unlock();
     }
+    //To String method that prints the current board
     public String toString() {
         String output = "";
         for (int row=0; row< 8; row++) {
@@ -368,12 +365,11 @@ public class Model implements Serializable {
     }
 
     public static void main(String[] args) {
-        Model model = new Model();
-        System.out.println(model);
-        System.out.println("making move");
-        model.makeMove(5, 7, 4, 6);
-        System.out.println(model);
-
-
+        //Testing
+        // Model model = new Model();
+        // System.out.println(model);
+        // System.out.println("making move");
+        // model.makeMove(5, 7, 4, 6);
+        // System.out.println(model);
     }
 }
